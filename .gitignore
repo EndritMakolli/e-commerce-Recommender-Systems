@@ -1,0 +1,14 @@
+# Python virtual environment
+myenv/
+venv/
+
+# Node
+node_modules/
+
+# Environment files
+.env
+.env.*
+
+# Build files
+build/
+dist/

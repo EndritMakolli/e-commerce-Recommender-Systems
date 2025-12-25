@@ -1,0 +1,25 @@
+React 
+npm start
+npm install react-bootstrap bootstrap 
+npm install react-bootstrap
+npm install react-router-dom react-router-bootstrap
+npm install axios
+npm install redux react-redux redux-thunk redux-devtools-extension 
+npm install @reduxjs/toolkit react-redux
+
+
+
+
+Django
+python manage.py runserver
+python manage.py migrate  
+myenv\Scripts\activate  
+pip install django         
+python -m pip install django  
+py -m pip install --upgrade pip      
+pip install virtualenv 
+pip install djangorestframework
+python -m pip install django-cors-headers
+python manage.py makemigrations
+pip install pillow
+     
