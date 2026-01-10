@@ -1,0 +1,49 @@
+install git https://git-scm.com/install/windows
+install python https://www.python.org/downloads/
+install node https://nodejs.org/en/download/
+
+Pasi ti instalojm e hapim VS Code 
+git clone https://github.com/EndritMakolli/e-commerce-Recommender-Systems.git 
+ cd .\e-commerce-Recommender-Systems\
+
+Django
+1. python -m venv myenv (close and reopen vs code)
+2. Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+3. myenv\Scripts\activate  
+4. cd .\backend\
+5. pip install django (close and reopen vs code)
+6. pip install virtualenv 
+7. pip install djangorestframework
+8. python -m pip install django  
+9. py -m pip install --upgrade pip      
+10. python -m pip install django-cors-headers
+11. pip install pillow
+12. python manage.py makemigrations
+13. python manage.py migrate  
+14. python manage.py runserver
+15. google link: http://127.0.0.1:8000/api/
+
+
+React 
+1. cd .\frontend\
+2. npm install (close and reopen vs code)
+3. npm install react-bootstrap bootstrap 
+4. npm install react-bootstrap
+5. npm install react-router-dom react-router-bootstrap
+6. npm install axios
+7. npm install @reduxjs/toolkit react-redux
+8. make sure to have the backend running pika 14 para se me bo npm start (myenv\Scripts\activate   duhet te aktivizohet paraprakisht)
+8. npm start
+
+
+
+
+
+
+
+
+        
+
+
+
+     
