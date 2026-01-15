@@ -1,33 +1,50 @@
-import React, { useState, useEffect } from 'react'
-import { Row, Col} from 'react-bootstrap'
+import React, { useEffect } from 'react'
+import { Row, Col } from 'react-bootstrap'
+import { useDispatch, useSelector } from 'react-redux'
+import { useLocation } from 'react-router-dom'
+
 import Product from '../components/Product'
 import Loader from '../components/Loader'
 import Message from '../components/Message'
-import {useDispatch, useSelector} from 'react-redux'
-import {listProducts} from '../actions/productAction'
+import { listProducts } from '../actions/productActions'
 
-function HomeScreen() {
+
+function HomeScreen(history) {
   const dispatch = useDispatch()
-  const productList = useSelector(state => state.productList)
+  const location = useLocation()
+
+  const params = new URLSearchParams(location.search)
+  const keyword = params.get('keyword') || ''
+  const pageNumber = params.get('page') || ''
+
+  const productList = useSelector((state) => state.productList) || {}
   const { loading, error, products } = productList
 
-  useEffect(() => {
-    dispatch(listProducts())
-  }, [dispatch])
+  
 
- 
+  useEffect(() => {
+    dispatch(listProducts(keyword, pageNumber))
+  }, [dispatch, keyword, pageNumber])
+
+  const safeProducts = Array.isArray(products) ? products : []
+
   return (
     <div>
-        <h1>Latest Products</h1>
+      <h1>Latest Products</h1>
 
-        {loading ? <Loader/> : error ? <Message variant='danger'>{error}</Message> : ''}
+      {loading ? (
+        <Loader />
+      ) : error ? (
+        <Message variant="danger">{error}</Message>
+      ) : (
         <Row>
-            {products.map(product => (
-                <Col key={product._id} sm={6} md={3} lg={3} xl={3}>
-                    <Product product={product}/>
-                </Col>
-            ))}
+          {safeProducts.map((product) => (
+            <Col key={product._id} sm={12} md={6} lg={4} xl={3}>
+              <Product product={product} />
+            </Col>
+          ))}
         </Row>
+      )}
     </div>
   )
 }

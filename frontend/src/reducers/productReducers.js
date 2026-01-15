@@ -31,37 +31,23 @@ import {
   PRODUCT_TOP_FAIL,
 } from '../constants/productConstants'
 
-
-// ✅ PRODUCT LIST (FIXED)
 export const productListReducer = (state = { products: [] }, action) => {
   switch (action.type) {
     case PRODUCT_LIST_REQUEST:
       return { loading: true, products: [] }
 
     case PRODUCT_LIST_SUCCESS:
-      return {
-        loading: false,
-        products: action.payload,   // ✅ FIXED HERE
-      }
+      return { loading: false, products: action.payload }
 
     case PRODUCT_LIST_FAIL:
-      return {
-        loading: false,
-        error: action.payload,
-        products: [],               // ✅ SAFETY
-      }
+      return { loading: false, error: action.payload, products: [] }
 
     default:
       return state
   }
 }
 
-
-// PRODUCT DETAILS
-export const productDetailsReducer = (
-  state = { product: { reviews: [] } },
-  action
-) => {
+export const productDetailsReducer = (state = { product: { reviews: [] } }, action) => {
   switch (action.type) {
     case PRODUCT_DETAILS_REQUEST:
       return { loading: true, ...state }
@@ -77,8 +63,6 @@ export const productDetailsReducer = (
   }
 }
 
-
-// PRODUCT DELETE
 export const productDeleteReducer = (state = {}, action) => {
   switch (action.type) {
     case PRODUCT_DELETE_REQUEST:
@@ -95,8 +79,6 @@ export const productDeleteReducer = (state = {}, action) => {
   }
 }
 
-
-// PRODUCT CREATE
 export const productCreateReducer = (state = {}, action) => {
   switch (action.type) {
     case PRODUCT_CREATE_REQUEST:
@@ -116,8 +98,6 @@ export const productCreateReducer = (state = {}, action) => {
   }
 }
 
-
-// PRODUCT UPDATE
 export const productUpdateReducer = (state = { product: {} }, action) => {
   switch (action.type) {
     case PRODUCT_UPDATE_REQUEST:
@@ -137,8 +117,6 @@ export const productUpdateReducer = (state = { product: {} }, action) => {
   }
 }
 
-
-// PRODUCT REVIEW CREATE
 export const productReviewCreateReducer = (state = {}, action) => {
   switch (action.type) {
     case PRODUCT_CREATE_REVIEW_REQUEST:
@@ -158,12 +136,7 @@ export const productReviewCreateReducer = (state = {}, action) => {
   }
 }
 
-
-// TOP RATED PRODUCTS
-export const productTopRatedReducer = (
-  state = { products: [] },
-  action
-) => {
+export const productTopRatedReducer = (state = { products: [] }, action) => {
   switch (action.type) {
     case PRODUCT_TOP_REQUEST:
       return { loading: true, products: [] }

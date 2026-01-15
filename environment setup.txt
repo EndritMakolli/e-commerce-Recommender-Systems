@@ -18,6 +18,8 @@ Django
 9. py -m pip install --upgrade pip      
 10. python -m pip install django-cors-headers
 11. pip install pillow
+11.1 pip install djangorestframework-simplejwt
+11.2 pip install django-storages
 12. python manage.py makemigrations
 13. python manage.py migrate  
 14. python manage.py runserver
@@ -32,6 +34,8 @@ React
 5. npm install react-router-dom react-router-bootstrap
 6. npm install axios
 7. npm install @reduxjs/toolkit react-redux
+7.1 npm i @paypal/react-paypal-js
+7,2 npm install react-icons
 8. make sure to have the backend running pika 14 para se me bo npm start (myenv\Scripts\activate   duhet te aktivizohet paraprakisht)
 8. npm start
 
