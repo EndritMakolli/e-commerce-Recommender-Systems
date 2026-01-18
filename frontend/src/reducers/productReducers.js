@@ -31,16 +31,21 @@ import {
   PRODUCT_TOP_FAIL,
 } from '../constants/productConstants'
 
-export const productListReducer = (state = { products: [] }, action) => {
+export const productListReducer = (state = { products: [], page: 1, pages: 1 }, action) => {
   switch (action.type) {
     case PRODUCT_LIST_REQUEST:
-      return { loading: true, products: [] }
+      return { loading: true, products: [], page: 1, pages: 1 }
 
     case PRODUCT_LIST_SUCCESS:
-      return { loading: false, products: action.payload }
+      return {
+        loading: false,
+        products: action.payload.products, // ✅ array from backend
+        page: action.payload.page,         // ✅ current page number
+        pages: action.payload.pages,       // ✅ total pages
+      }
 
     case PRODUCT_LIST_FAIL:
-      return { loading: false, error: action.payload, products: [] }
+      return { loading: false, error: action.payload, products: [], page: 1, pages: 1 }
 
     default:
       return state

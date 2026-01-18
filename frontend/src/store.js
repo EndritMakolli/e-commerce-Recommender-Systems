@@ -31,6 +31,11 @@ import {
   orderDeliverReducer,
 } from './reducers/orderReducers'
 
+import {
+  myRecommendationsReducer,
+  relatedRecommendationsReducer,
+} from './reducers/recommendationReducers'
+
 // LocalStorage
 const cartItemsFromStorage = localStorage.getItem('cartItems')
   ? JSON.parse(localStorage.getItem('cartItems'))
@@ -78,6 +83,9 @@ const store = configureStore({
     orderListMy: orderListMyReducer,
     orderList: orderListReducer,
     orderDeliver: orderDeliverReducer,
+
+    myRecommendations: myRecommendationsReducer,
+    relatedRecommendations: relatedRecommendationsReducer,
   },
   preloadedState,
   devTools: true,

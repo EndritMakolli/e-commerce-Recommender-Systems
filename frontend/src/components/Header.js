@@ -59,28 +59,8 @@ function Header() {
                       <Nav.Link style={s.navLink}>Shop</Nav.Link>
                     </LinkContainer>
 
-                    <NavDropdown
-                      title={<span style={s.navLink}>Collections</span>}
-                      id="collections"
-                      menuVariant="dark"
-                    >
-                      <LinkContainer to="/">
-                        <NavDropdown.Item>Electronics</NavDropdown.Item>
-                      </LinkContainer>
-                      <LinkContainer to="/">
-                        <NavDropdown.Item>Fashion</NavDropdown.Item>
-                      </LinkContainer>
-                      <LinkContainer to="/">
-                        <NavDropdown.Item>Home & Living</NavDropdown.Item>
-                      </LinkContainer>
-                    </NavDropdown>
-
-                    <LinkContainer to="/">
-                      <Nav.Link style={s.navLink}>Deals</Nav.Link>
-                    </LinkContainer>
-
-                    <LinkContainer to="/">
-                      <Nav.Link style={s.navLink}>Support</Nav.Link>
+                    <LinkContainer to="/outofstock">
+                      <Nav.Link style={s.navLink}>Out of Stock</Nav.Link>
                     </LinkContainer>
                   </>
                 ) : (

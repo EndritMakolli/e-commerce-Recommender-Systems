@@ -68,8 +68,11 @@ function ProductScreen() {
         <>
           <Row>
             <Col md={6}>
-              <Image src={product?.image} alt={product?.name} fluid />
-            </Col>
+            <div style={styles.imageWrap}>
+              <Image src={product?.image} alt={product?.name} style={styles.image} />
+            </div>
+          </Col>
+
 
             <Col md={3}>
               <ListGroup variant="flush">
@@ -224,3 +227,24 @@ function ProductScreen() {
 }
 
 export default ProductScreen
+
+
+const styles = {
+  imageWrap: {
+    width: '100%',
+    maxHeight: 520,          // ✅ height limit (change if you want)
+    overflow: 'hidden',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: '#fff',
+    borderRadius: 10,
+    border: '1px solid rgba(0,0,0,0.06)',
+  },
+  image: {
+    maxWidth: '100%',
+    maxHeight: 520,          // ✅ matches wrapper
+    objectFit: 'contain',    // ✅ keeps full product visible
+  },
+}
+

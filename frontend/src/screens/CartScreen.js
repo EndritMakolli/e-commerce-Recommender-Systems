@@ -1,14 +1,18 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useMemo } from 'react'
 import { Link, useParams, useLocation, useNavigate } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { Row, Col, ListGroup, Image, Form, Button, Card } from 'react-bootstrap'
 import Message from '../components/Message'
 import { addToCart, removeFromCart } from '../actions/cartActions'
+import { listRelatedRecommendations } from '../actions/recommendationActions'
+import Loader from '../components/Loader'
+import Product from '../components/Product'
+import listMyRecommendations from '../actions/recommendationActions'
 
 function CartScreen() {
-  const { id: productId } = useParams()          // ✅ replaces match.params.id
-  const location = useLocation()                 // ✅ replaces location
-  const navigate = useNavigate()                 // ✅ replaces history
+  const { id: productId } = useParams()
+  const location = useLocation()
+  const navigate = useNavigate()
 
   const qty = location.search
     ? Number(new URLSearchParams(location.search).get('qty'))
@@ -19,19 +23,36 @@ function CartScreen() {
   const cart = useSelector((state) => state.cart)
   const { cartItems } = cart
 
+  const relatedState = useSelector((state) => state.relatedRecommendations) || { items: [] }
+  const { loading: loadingRelated, error: errorRelated, items: relatedItems } = relatedState
+
+  // pick anchor product (last added to cart)
+  const anchorProductId = useMemo(() => {
+    if (!cartItems || cartItems.length === 0) return null
+    return cartItems[cartItems.length - 1].product
+  }, [cartItems])
+
   useEffect(() => {
     if (productId) {
       dispatch(addToCart(productId, qty))
     }
   }, [dispatch, productId, qty])
 
+  useEffect(() => {
+    if (anchorProductId) {
+      dispatch(listRelatedRecommendations(anchorProductId))
+    }
+  }, [dispatch, anchorProductId])
+
   const removeFromCartHandler = (id) => {
     dispatch(removeFromCart(id))
   }
 
   const checkoutHandler = () => {
-    navigate('/login?redirect=/shipping')          // ✅ v6 navigation
+    navigate('/login?redirect=/shipping')
   }
+
+  const safeRelated = Array.isArray(relatedItems) ? relatedItems : []
 
   return (
     <Row>
@@ -43,53 +64,78 @@ function CartScreen() {
             Your cart is empty <Link to="/">Go Back</Link>
           </Message>
         ) : (
-          <ListGroup variant="flush">
-            {cartItems.map((item) => (
-              <ListGroup.Item key={item.product}>
+          <>
+            <ListGroup variant="flush">
+              {cartItems.map((item) => (
+                <ListGroup.Item key={item.product}>
+                  <Row>
+                    <Col md={2}>
+                      <Image
+                        src={item.image}
+                        alt={item.name}
+                        fluid
+                        rounded
+                        style={{ width: '100%', height: 64, objectFit: 'contain' }}
+                      />
+                    </Col>
+
+                    <Col md={3}>
+                      <Link to={`/product/${item.product}`}>{item.name}</Link>
+                    </Col>
+
+                    <Col md={2}>${item.price}</Col>
+
+                    <Col md={3}>
+                      <Form.Control
+                        as="select"
+                        value={item.qty}
+                        onChange={(e) =>
+                          dispatch(addToCart(item.product, Number(e.target.value)))
+                        }
+                      >
+                        {[...Array(item.countInStock).keys()].map((x) => (
+                          <option key={x + 1} value={x + 1}>
+                            {x + 1}
+                          </option>
+                        ))}
+                      </Form.Control>
+                    </Col>
+
+                    <Col md={1}>
+                      <Button
+                        type="button"
+                        variant="light"
+                        onClick={() => removeFromCartHandler(item.product)}
+                      >
+                        <i className="fas fa-trash"></i>
+                      </Button>
+                    </Col>
+                  </Row>
+                </ListGroup.Item>
+              ))}
+            </ListGroup>
+
+            {/* ✅ Related products section */}
+            <div style={{ marginTop: 28 }}>
+              <h4 style={{ marginBottom: 14 }}>Often bought together</h4>
+
+              {loadingRelated ? (
+                <Loader />
+              ) : errorRelated ? (
+                <Message variant="danger">{errorRelated}</Message>
+              ) : safeRelated.length === 0 ? (
+                <Message variant="info">No related suggestions yet.</Message>
+              ) : (
                 <Row>
-                  <Col md={2}>
-                    <Image src={item.image} alt={item.name} fluid rounded />
-                  </Col>
-
-                  <Col md={3}>
-                    <Link to={`/product/${item.product}`}>
-                      {item.name}
-                    </Link>
-                  </Col>
-
-                  <Col md={2}>${item.price}</Col>
-
-                  <Col md={3}>
-                    <Form.Control
-                      as="select"
-                      value={item.qty}
-                      onChange={(e) =>
-                        dispatch(
-                          addToCart(item.product, Number(e.target.value))
-                        )
-                      }
-                    >
-                      {[...Array(item.countInStock).keys()].map((x) => (
-                        <option key={x + 1} value={x + 1}>
-                          {x + 1}
-                        </option>
-                      ))}
-                    </Form.Control>
-                  </Col>
-
-                  <Col md={1}>
-                    <Button
-                      type="button"
-                      variant="light"
-                      onClick={() => removeFromCartHandler(item.product)}
-                    >
-                      <i className="fas fa-trash"></i>
-                    </Button>
-                  </Col>
+                  {safeRelated.slice(0, 4).map((r) => (
+                    <Col key={r.product._id} sm={12} md={6} lg={3}>
+                      <Product product={r.product} />
+                    </Col>
+                  ))}
                 </Row>
-              </ListGroup.Item>
-            ))}
-          </ListGroup>
+              )}
+            </div>
+          </>
         )}
       </Col>
 
@@ -98,8 +144,7 @@ function CartScreen() {
           <ListGroup variant="flush">
             <ListGroup.Item>
               <h2>
-                Subtotal (
-                {cartItems.reduce((acc, item) => acc + item.qty, 0)}) items
+                Subtotal ({cartItems.reduce((acc, item) => acc + item.qty, 0)}) items
               </h2>
               $
               {cartItems

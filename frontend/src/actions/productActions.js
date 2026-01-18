@@ -30,23 +30,21 @@ import {
 } from '../constants/productConstants'
 
 // ✅ LIST PRODUCTS (ALWAYS RETURNS ARRAY)
-export const listProducts = (keyword = '') => async (dispatch) => {
+// ✅ LIST PRODUCTS (supports keyword + pagination)
+export const listProducts = (keyword = '', pageNumber = 1) => async (dispatch) => {
   try {
     dispatch({ type: PRODUCT_LIST_REQUEST })
 
-    // keyword should be a string like "laptop"
-    // endpoint becomes: /api/products/?keyword=laptop
-    const url = keyword ? `/api/products/?keyword=${encodeURIComponent(keyword)}` : `/api/products/`
+    const qs = new URLSearchParams()
+    if (keyword) qs.set('keyword', keyword)
+    qs.set('page', String(pageNumber))
 
-    const { data } = await axios.get(url)
+    const { data } = await axios.get(`/api/products/?${qs.toString()}`)
 
-    // ✅ force payload to be an array so products.map works
-    const productsArray =
-      Array.isArray(data) ? data : Array.isArray(data?.products) ? data.products : []
-
+    // data = { products: [...], page: 1, pages: 5 }
     dispatch({
       type: PRODUCT_LIST_SUCCESS,
-      payload: productsArray,
+      payload: data,
     })
   } catch (error) {
     dispatch({
@@ -58,6 +56,7 @@ export const listProducts = (keyword = '') => async (dispatch) => {
     })
   }
 }
+
 
 // TOP PRODUCTS
 export const listTopProducts = () => async (dispatch) => {

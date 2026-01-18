@@ -20,8 +20,11 @@ Django
 11. pip install pillow
 11.1 pip install djangorestframework-simplejwt
 11.2 pip install django-storages
+11.3 pip install sentence-transformers numpy scikit-learn gensim
+11.4 pip install faiss-cpu
 12. python manage.py makemigrations
 13. python manage.py migrate  
+13.2 python manage.py build_ai_recommendations
 14. python manage.py runserver
 15. google link: http://127.0.0.1:8000/api/
 
