@@ -6,7 +6,9 @@ import { Row, Col, ListGroup, Image, Button, Card, Badge } from 'react-bootstrap
 import Message from '../components/Message'
 import Loader from '../components/Loader'
 import { addToCart } from '../actions/cartActions'
-import { listMyRecommendations } from '../actions/recommendationActions'
+
+// ✅ use the dynamic action
+import { listRestockDynamic } from '../actions/recommendationActions'
 
 function OutOfStockScreen() {
   const dispatch = useDispatch()
@@ -15,15 +17,22 @@ function OutOfStockScreen() {
   const userLogin = useSelector((state) => state.userLogin)
   const { userInfo } = userLogin || {}
 
-  const recommendationList = useSelector((state) => state.recommendationList) || {}
-  const { loading = false, error = null, items = [] } = recommendationList
+  const myRecommendations = useSelector((state) => state.myRecommendations) || {}
+  const { loading = false, error = null, items = [] } = myRecommendations
 
   const [justOneRow, setJustOneRow] = useState(false)
 
+  // ✅ Dynamic refresh every 30 seconds
   useEffect(() => {
-    if (userInfo) {
-      dispatch(listMyRecommendations('restock'))
-    }
+    if (!userInfo) return
+
+    dispatch(listRestockDynamic(8))
+
+    const interval = setInterval(() => {
+      dispatch(listRestockDynamic(8))
+    }, 30000)
+
+    return () => clearInterval(interval)
   }, [dispatch, userInfo])
 
   const safeItems = useMemo(() => {
@@ -41,7 +50,12 @@ function OutOfStockScreen() {
 
   const stockBadge = (p) => {
     if (p?.countInStock === 0) return <Badge bg="danger">Out of stock</Badge>
-    if (typeof p?.countInStock === 'number' && p.countInStock <= 3) return <Badge bg="warning" text="dark">Low stock</Badge>
+    if (typeof p?.countInStock === 'number' && p.countInStock <= 3)
+      return (
+        <Badge bg="warning" text="dark">
+          Low stock
+        </Badge>
+      )
     return <Badge bg="success">In stock</Badge>
   }
 
@@ -79,7 +93,8 @@ function OutOfStockScreen() {
           <div style={s.kicker}>Restock assistant</div>
           <h2 style={s.title}>Restock & Availability</h2>
           <p style={s.sub}>
-            Based on your repeat purchases — we’ll show items you might need again (even if they’re currently out of stock).
+            Based on your repeat purchases — we’ll show items you might need again (even if they’re
+            currently out of stock).
           </p>
         </div>
 
@@ -96,7 +111,7 @@ function OutOfStockScreen() {
           <Button
             variant="outline-dark"
             size="sm"
-            onClick={() => dispatch(listMyRecommendations('restock'))}
+            onClick={() => dispatch(listRestockDynamic(8))}
             style={s.pillBtn}
           >
             Refresh
@@ -116,7 +131,9 @@ function OutOfStockScreen() {
         <Message variant="info">
           No suggestions yet. Place a couple of orders (repeat the same item at least twice) then refresh.
           <div style={{ marginTop: 8 }}>
-            <Link to="/" className="btn btn-outline-dark btn-sm">Browse products</Link>
+            <Link to="/" className="btn btn-outline-dark btn-sm">
+              Browse products
+            </Link>
           </div>
         </Message>
       ) : (
@@ -149,7 +166,9 @@ function OutOfStockScreen() {
                           </Link>
                           <div style={s.metaLine}>
                             {stockBadge(p)}
-                            {x?.reason ? <span style={{ marginLeft: 8, opacity: 0.75 }}>{x.reason}</span> : null}
+                            {x?.reason ? (
+                              <span style={{ marginLeft: 8, opacity: 0.75 }}>{x.reason}</span>
+                            ) : null}
                           </div>
                         </Col>
 
@@ -209,77 +228,73 @@ function OutOfStockScreen() {
 }
 
 const s = {
-  wrap: { position: 'relative', paddingTop: 6 },
+  wrap: { maxWidth: 1140, margin: '0 auto', padding: '24px 16px', position: 'relative' },
   glow: {
     position: 'absolute',
-    inset: '-20px -20px auto -20px',
-    height: 220,
+    inset: 0,
     background:
-      'radial-gradient(650px 220px at 22% 50%, rgba(0, 200, 255, 0.15), rgba(0,0,0,0)),' +
-      'radial-gradient(650px 220px at 78% 55%, rgba(140, 90, 255, 0.13), rgba(0,0,0,0))',
-    filter: 'blur(10px)',
+      'radial-gradient(600px 220px at 35% 15%, rgba(13,110,253,0.12), transparent 60%), radial-gradient(500px 200px at 75% 25%, rgba(0,0,0,0.06), transparent 60%)',
     pointerEvents: 'none',
+    zIndex: 0,
   },
+
   hero: {
     position: 'relative',
-    borderRadius: 18,
-    padding: '16px 18px',
-    marginBottom: 18,
-    background: 'rgba(255,255,255,0.75)',
-    border: '1px solid rgba(0,0,0,0.06)',
-    boxShadow: '0 14px 40px rgba(0,0,0,0.08)',
-    backdropFilter: 'blur(10px)',
-    WebkitBackdropFilter: 'blur(10px)',
+    zIndex: 1,
+    background: '#fff',
+    borderRadius: 16,
+    padding: 18,
+    border: '1px solid rgba(0,0,0,0.08)',
     display: 'flex',
+    gap: 18,
     justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    gap: 12,
+    alignItems: 'center',
+    marginBottom: 18,
   },
-  kicker: { fontSize: 12, letterSpacing: 1.6, textTransform: 'uppercase', opacity: 0.65, marginBottom: 2 },
-  title: { margin: 0, fontWeight: 900, letterSpacing: 0.6 },
-  sub: { margin: '6px 0 0 0', opacity: 0.75, maxWidth: 560 },
-  heroActions: { display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' },
+  kicker: { textTransform: 'uppercase', letterSpacing: 1.2, fontSize: 12, opacity: 0.6 },
+  title: { margin: 0, fontWeight: 800 },
+  sub: { margin: '6px 0 0', opacity: 0.7, maxWidth: 540 },
+
+  heroActions: { display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' },
   pillBtn: { borderRadius: 999 },
 
-  card: { borderRadius: 18, border: '1px solid rgba(0,0,0,0.06)', boxShadow: '0 14px 40px rgba(0,0,0,0.08)', overflow: 'hidden' },
+  card: { borderRadius: 16, border: '1px solid rgba(0,0,0,0.08)' },
   cardHeader: {
-    background: 'rgba(255,255,255,0.85)',
+    background: '#fff',
     borderBottom: '1px solid rgba(0,0,0,0.06)',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
     display: 'flex',
     justifyContent: 'space-between',
-    alignItems: 'flex-end',
+    alignItems: 'center',
     gap: 12,
   },
-  cardKicker: { fontSize: 12, letterSpacing: 1.6, textTransform: 'uppercase', opacity: 0.6 },
-  cardTitle: { fontWeight: 900, letterSpacing: 0.5 },
-  cardHint: { fontSize: 12, opacity: 0.6 },
+  cardKicker: { textTransform: 'uppercase', letterSpacing: 1.1, fontSize: 12, opacity: 0.6 },
+  cardTitle: { fontWeight: 800 },
+  cardHint: { opacity: 0.6, fontSize: 12 },
 
-  rowItem: { paddingTop: 14, paddingBottom: 14 },
-
+  rowItem: { padding: 14 },
   imgWrap: {
-    width: 70,
-    height: 70,
+    width: 64,
+    height: 64,
     borderRadius: 12,
-    overflow: 'hidden',
-    background: '#fff',
-    border: '1px solid rgba(0,0,0,0.06)',
+    border: '1px solid rgba(0,0,0,0.08)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+    background: '#fff',
   },
-  img: { width: '100%', height: '100%', objectFit: 'contain' },
-
-  nameLink: { textDecoration: 'none', fontWeight: 800, color: '#0a0f12', display: 'inline-block', lineHeight: 1.2 },
-  metaLine: { marginTop: 6, fontSize: 12, display: 'flex', alignItems: 'center', gap: 8 },
-
-  price: { fontWeight: 900, opacity: 0.9 },
-
-  actionsCell: { display: 'flex', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap' },
+  img: { width: '100%', height: '100%', objectFit: 'cover' },
+  nameLink: { fontWeight: 700, textDecoration: 'none', color: '#111' },
+  metaLine: { marginTop: 6, fontSize: 12 },
+  price: { fontWeight: 700 },
+  actionsCell: { display: 'flex', gap: 10, justifyContent: 'flex-end', alignItems: 'center' },
   primaryBtn: { borderRadius: 999, paddingLeft: 14, paddingRight: 14 },
   secondaryBtn: { borderRadius: 999 },
 
-  sideCard: { borderRadius: 18, border: '1px solid rgba(0,0,0,0.06)', boxShadow: '0 14px 40px rgba(0,0,0,0.08)' },
-  sideTitle: { fontWeight: 900, marginBottom: 6 },
+  sideCard: { borderRadius: 16, border: '1px solid rgba(0,0,0,0.08)' },
+  sideTitle: { fontWeight: 800, marginBottom: 6 },
   sideText: { opacity: 0.75, fontSize: 13, lineHeight: 1.5 },
   divider: { height: 1, background: 'rgba(0,0,0,0.08)', margin: '14px 0' },
 }

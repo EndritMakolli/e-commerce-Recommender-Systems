@@ -1,4 +1,5 @@
 from collections import Counter
+from django.db.models import Count, Max
 
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -6,6 +7,10 @@ from rest_framework.response import Response
 
 from base.models import Product, Order, OrderItem, Recommendation
 from base.serializers import ProductSerializer
+
+from collections import Counter, defaultdict
+from django.utils import timezone
+from datetime import datetime
 
 
 def _pk_field(model, fallback="id"):
@@ -184,6 +189,162 @@ def getMyRecommendationsDynamic(request):
         .order_by("-rating", "-numReviews")[:topn]
     )
     return Response(_serialize_products(popular, reason="Popular picks", rec_type="for_you_dynamic"))
+
+from collections import Counter, defaultdict
+from django.utils import timezone
+from datetime import datetime
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def getRestockDynamic(request):
+    """
+    Time-based RESTOCK / REORDER (seconds-based, safe, dynamic):
+
+    - For each product: collect purchase timestamps (order.createdAt)
+    - expected_gap_seconds:
+        * gap between 1st and 2nd purchase
+        * optionally average consecutive gaps if 3+ purchases
+    - show product only if:
+        * since_last_seconds >= min_seconds  (default 30s)
+        AND
+        * since_last_seconds >= due_factor * expected_gap_seconds
+
+    Query params:
+      - topn (default 8)
+      - min_seconds (default 30)      -> hard minimum delay before showing
+      - due_factor (default 0.8)      -> how close to expected gap before showing
+      - use_avg_gap (default 1)       -> if 1 and 3+ purchases, average consecutive gaps
+      - include_oos (default 0)       -> if 1, include out-of-stock products too
+    """
+
+    topn = int(request.query_params.get("topn", 8))
+    min_seconds = int(request.query_params.get("min_seconds", 30))
+    due_factor = float(request.query_params.get("due_factor", 0.8))
+    use_avg_gap = int(request.query_params.get("use_avg_gap", 1)) == 1
+    include_oos = int(request.query_params.get("include_oos", 0)) == 1
+
+    product_pk = _pk_field(Product)
+
+    user_items = (
+        OrderItem.objects
+        .filter(order__user=request.user)
+        .select_related("product", "order")
+    )
+
+    # purchase timestamps by product id
+    times_by_pid = defaultdict(list)
+    counts = Counter()
+
+    for oi in user_items:
+        p = getattr(oi, "product", None)
+        o = getattr(oi, "order", None)
+        if not p or not o:
+            continue
+
+        # OPTIONAL: only count paid orders (uncomment if you want)
+        # if not getattr(o, "isPaid", False):
+        #     continue
+
+        pid = getattr(p, product_pk, None)
+        if pid is None:
+            continue
+
+        dt = getattr(o, "createdAt", None)
+        if not dt:
+            continue
+
+        # if dt is a string or invalid, skip safely
+        if isinstance(dt, str):
+            continue
+
+        # make timezone-aware safely
+        try:
+            if timezone.is_naive(dt):
+                dt = timezone.make_aware(dt, timezone.get_current_timezone())
+        except Exception:
+            continue
+
+        times_by_pid[pid].append(dt)
+        counts[pid] += 1
+
+    now = timezone.now()
+
+    # which products are "due"
+    due_pids = []
+    meta = {}  # pid -> (count, expected_gap_seconds, since_last_seconds)
+
+    for pid, dts in times_by_pid.items():
+        if len(dts) < 2:
+            continue
+
+        dts_sorted = sorted(dts)
+
+        # expected gap based on first->second purchase (seconds)
+        gap_1_2 = (dts_sorted[1] - dts_sorted[0]).total_seconds()
+        if gap_1_2 <= 0:
+            continue
+
+        expected_gap = float(gap_1_2)
+
+        # if 3+ purchases and enabled: average consecutive gaps (seconds)
+        if use_avg_gap and len(dts_sorted) >= 3:
+            gaps = []
+            for i in range(1, len(dts_sorted)):
+                g = (dts_sorted[i] - dts_sorted[i - 1]).total_seconds()
+                if g > 0:
+                    gaps.append(g)
+            if gaps:
+                expected_gap = sum(gaps) / len(gaps)
+
+        last_buy = dts_sorted[-1]
+        since_last = (now - last_buy).total_seconds()
+
+        # HARD MINIMUM: don't show immediately after purchase
+        if since_last < min_seconds:
+            continue
+
+        # TIME-DUE RULE
+        if since_last >= due_factor * expected_gap:
+            due_pids.append(pid)
+            meta[pid] = (counts[pid], expected_gap, since_last)
+
+    # fetch products
+    qs = Product.objects.filter(**{f"{product_pk}__in": due_pids})
+    if not include_oos:
+        qs = qs.filter(countInStock__gt=0)
+
+    products = list(qs)
+    pmap = {getattr(p, product_pk): p for p in products}
+
+    # rank: most overdue ratio first, then most bought
+    def rank_key(pid):
+        c, eg, sl = meta.get(pid, (0, 1.0, 0.0))
+        ratio = sl / eg if eg else 0.0
+        return (ratio, c)
+
+    ranked = sorted([pid for pid in due_pids if pid in pmap], key=rank_key, reverse=True)
+
+    out = []
+    for pid in ranked[:topn]:
+        p = pmap.get(pid)
+        if not p:
+            continue
+
+        c, eg, sl = meta.get(pid, (0, 0.0, 0.0))
+
+        # readable seconds
+        sl_s = int(sl)
+        eg_s = int(eg)
+
+        out.append({
+            "product": ProductSerializer(p, many=False).data,
+            "score": float(c),
+            "reason": f"Bought {c}× — last {sl_s}s ago (typical gap ~{eg_s}s)",
+            "type": "restock_dynamic",
+        })
+
+    return Response(out)
+
 
 
 @api_view(["GET"])

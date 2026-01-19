@@ -147,23 +147,35 @@ function ProfileScreen({ history }) {
                                     </tr>
                                 </thead>
 
-                                <tbody>
-                                    {orders.map(order => (
-                                        <tr key={order._id}>
-                                            <td>{order._id}</td>
-                                            <td>{order.createdAt.substring(0, 10)}</td>
-                                            <td>${order.totalPrice}</td>
-                                            <td>{order.isPaid ? order.paidAt.substring(0, 10) : (
-                                                <i className='fas fa-times' style={{ color: 'red' }}></i>
-                                            )}</td>
-                                            <td>
-                                                <LinkContainer to={`/order/${order._id}`}>
-                                                    <Button className='btn-sm'>Details</Button>
-                                                </LinkContainer>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
+                               <tbody>
+  {(orders || []).map((order) => {
+    const created = order?.createdAt ? order.createdAt.substring(0, 10) : '-'
+    const paid = order?.paidAt ? order.paidAt.substring(0, 10) : null
+
+    return (
+      <tr key={order?._id}>
+        <td>{order?._id}</td>
+        <td>{created}</td>
+        <td>${order?.totalPrice}</td>
+
+        <td>
+          {order?.isPaid && paid ? (
+            paid
+          ) : (
+            <i className='fas fa-times' style={{ color: 'red' }}></i>
+          )}
+        </td>
+
+        <td>
+          <LinkContainer to={`/order/${order?._id}`}>
+            <Button className='btn-sm'>Details</Button>
+          </LinkContainer>
+        </td>
+      </tr>
+    )
+  })}
+</tbody>
+
                             </Table>
                         )}
             </Col>
