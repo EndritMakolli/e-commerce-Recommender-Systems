@@ -5,21 +5,81 @@ from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 
-from base.models import Product, Review
+from base.models import Product, Review, ProductEmbedding
 from base.serializers import ProductSerializer
 
 from rest_framework import status
+import numpy as np
+from sklearn.metrics.pairwise import cosine_similarity
+
+# For semantic search
+try:
+    from sentence_transformers import SentenceTransformer
+    SENTENCE_TRANSFORMER_AVAILABLE = True
+except ImportError:
+    SENTENCE_TRANSFORMER_AVAILABLE = False
 
 
 @api_view(['GET'])
 def getProducts(request):
     query = request.query_params.get('keyword')
+    semantic_mode = request.query_params.get('semantic', '0') == '1'
+    
     if query == None:
         query = ''
 
-    products = Product.objects.filter(
-        name__icontains=query).order_by('-createdAt')
+    # Semantic Search Mode
+    if query and semantic_mode and SENTENCE_TRANSFORMER_AVAILABLE:
+        try:
+            # Load embedder
+            embedder = SentenceTransformer('all-MiniLM-L6-v2')
+            
+            # Get query embedding
+            query_vec = embedder.encode(query, normalize_embeddings=True)
+            
+            # Get all product embeddings
+            product_embeddings = ProductEmbedding.objects.select_related('product').all()
+            
+            if not product_embeddings:
+                # Fallback to keyword search if no embeddings
+                products = Product.objects.filter(name__icontains=query).order_by('-createdAt')
+            else:
+                # Calculate similarities
+                product_ids = []
+                product_vecs = []
+                
+                for pe in product_embeddings:
+                    if pe.vector and len(pe.vector) > 0:
+                        product_ids.append(pe.product_id)
+                        product_vecs.append(np.array(pe.vector, dtype=np.float32))
+                
+                if product_vecs:
+                    all_vecs = np.vstack(product_vecs)
+                    similarities = cosine_similarity([query_vec], all_vecs)[0]
+                    
+                    # Sort by similarity (descending)
+                    ranked = sorted(zip(product_ids, similarities), key=lambda x: x[1], reverse=True)
+                    
+                    # Get top products (filter by similarity threshold)
+                    top_product_ids = [pid for pid, sim in ranked if sim > 0.20]  # 0.20 threshold (lowered for better results)
+                    
+                    if top_product_ids:
+                        # Preserve order from ranking
+                        products_list = list(Product.objects.filter(_id__in=top_product_ids))
+                        id_to_product = {p._id: p for p in products_list}
+                        products = [id_to_product[pid] for pid in top_product_ids if pid in id_to_product]
+                    else:
+                        products = []
+                else:
+                    products = Product.objects.filter(name__icontains=query).order_by('-createdAt')
+        except Exception as e:
+            # Fallback to keyword search
+            products = Product.objects.filter(name__icontains=query).order_by('-createdAt')
+    else:
+        # Regular keyword search
+        products = Product.objects.filter(name__icontains=query).order_by('-createdAt')
 
+    # Pagination
     page = request.query_params.get('page')
     paginator = Paginator(products, 8)
 
@@ -34,8 +94,9 @@ def getProducts(request):
         page = 1
 
     page = int(page)
-    print('Page:', page)
+    
     serializer = ProductSerializer(products, many=True)
+    
     return Response({'products': serializer.data, 'page': page, 'pages': paginator.num_pages})
 
 

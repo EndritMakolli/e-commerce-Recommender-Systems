@@ -7,6 +7,7 @@ from rest_framework.response import Response
 
 from base.models import Product, Order, OrderItem, Recommendation
 from base.serializers import ProductSerializer
+from base.ml.restock_predictor import get_restock_predictor
 
 from collections import Counter, defaultdict
 from django.utils import timezone
@@ -198,16 +199,11 @@ from datetime import datetime
 @permission_classes([IsAuthenticated])
 def getRestockDynamic(request):
     """
-    Time-based RESTOCK / REORDER (seconds-based, safe, dynamic):
+    Time-based RESTOCK / REORDER with AI predictions (seconds-based, safe, dynamic):
 
     - For each product: collect purchase timestamps (order.createdAt)
-    - expected_gap_seconds:
-        * gap between 1st and 2nd purchase
-        * optionally average consecutive gaps if 3+ purchases
-    - show product only if:
-        * since_last_seconds >= min_seconds  (default 30s)
-        AND
-        * since_last_seconds >= due_factor * expected_gap_seconds
+    - Uses AI model to predict restock probability
+    - Fallback to statistical method if AI unavailable
 
     Query params:
       - topn (default 8)
@@ -215,6 +211,7 @@ def getRestockDynamic(request):
       - due_factor (default 0.8)      -> how close to expected gap before showing
       - use_avg_gap (default 1)       -> if 1 and 3+ purchases, average consecutive gaps
       - include_oos (default 0)       -> if 1, include out-of-stock products too
+      - use_ai (default 1)            -> if 1, use AI predictions; if 0, use statistical method
     """
 
     topn = int(request.query_params.get("topn", 8))
@@ -222,6 +219,7 @@ def getRestockDynamic(request):
     due_factor = float(request.query_params.get("due_factor", 0.8))
     use_avg_gap = int(request.query_params.get("use_avg_gap", 1)) == 1
     include_oos = int(request.query_params.get("include_oos", 0)) == 1
+    use_ai = int(request.query_params.get("use_ai", 1)) == 1
 
     product_pk = _pk_field(Product)
 
@@ -269,17 +267,52 @@ def getRestockDynamic(request):
 
     now = timezone.now()
 
+    # Get AI predictor if enabled
+    predictor = get_restock_predictor() if use_ai else None
+
     # which products are "due"
     due_pids = []
-    meta = {}  # pid -> (count, expected_gap_seconds, since_last_seconds)
+    meta = {}  # pid -> (count, expected_gap_seconds, since_last_seconds, ai_prob)
 
     for pid, dts in times_by_pid.items():
         if len(dts) < 2:
             continue
 
         dts_sorted = sorted(dts)
+        last_buy = dts_sorted[-1]
+        since_last = (now - last_buy).total_seconds()
 
-        # expected gap based on first->second purchase (seconds)
+        # HARD MINIMUM: don't show immediately after purchase
+        if since_last < min_seconds:
+            continue
+
+        # Use AI prediction if available
+        if predictor and use_ai:
+            try:
+                ai_prob = predictor.predict(dts)
+                
+                # Use AI probability for scoring
+                if ai_prob >= 0.55:  # AI confidence threshold
+                    gap_1_2 = (dts_sorted[1] - dts_sorted[0]).total_seconds()
+                    expected_gap = float(gap_1_2)
+                    
+                    if use_avg_gap and len(dts_sorted) >= 3:
+                        gaps = []
+                        for i in range(1, len(dts_sorted)):
+                            g = (dts_sorted[i] - dts_sorted[i - 1]).total_seconds()
+                            if g > 0:
+                                gaps.append(g)
+                        if gaps:
+                            expected_gap = sum(gaps) / len(gaps)
+                    
+                    due_pids.append(pid)
+                    meta[pid] = (counts[pid], expected_gap, since_last, ai_prob)
+                continue
+            except Exception as e:
+                print(f"AI prediction failed for {pid}: {e}")
+                # Fall through to statistical method
+
+        # Fallback to statistical method
         gap_1_2 = (dts_sorted[1] - dts_sorted[0]).total_seconds()
         if gap_1_2 <= 0:
             continue
@@ -296,17 +329,10 @@ def getRestockDynamic(request):
             if gaps:
                 expected_gap = sum(gaps) / len(gaps)
 
-        last_buy = dts_sorted[-1]
-        since_last = (now - last_buy).total_seconds()
-
-        # HARD MINIMUM: don't show immediately after purchase
-        if since_last < min_seconds:
-            continue
-
         # TIME-DUE RULE
         if since_last >= due_factor * expected_gap:
             due_pids.append(pid)
-            meta[pid] = (counts[pid], expected_gap, since_last)
+            meta[pid] = (counts[pid], expected_gap, since_last, None)
 
     # fetch products
     qs = Product.objects.filter(**{f"{product_pk}__in": due_pids})
@@ -316,11 +342,21 @@ def getRestockDynamic(request):
     products = list(qs)
     pmap = {getattr(p, product_pk): p for p in products}
 
-    # rank: most overdue ratio first, then most bought
+    # Updated ranking with AI scores
     def rank_key(pid):
-        c, eg, sl = meta.get(pid, (0, 1.0, 0.0))
-        ratio = sl / eg if eg else 0.0
-        return (ratio, c)
+        data = meta.get(pid, (0, 1.0, 0.0, None))
+        c = data[0]
+        eg = data[1]
+        sl = data[2]
+        ai_prob = data[3] if len(data) > 3 else None
+        
+        if ai_prob is not None:
+            # AI-based ranking
+            return (ai_prob, c)
+        else:
+            # Statistical ranking
+            ratio = sl / eg if eg else 0.0
+            return (ratio, c)
 
     ranked = sorted([pid for pid in due_pids if pid in pmap], key=rank_key, reverse=True)
 
@@ -330,16 +366,25 @@ def getRestockDynamic(request):
         if not p:
             continue
 
-        c, eg, sl = meta.get(pid, (0, 0.0, 0.0))
+        data = meta.get(pid, (0, 0.0, 0.0, None))
+        c = data[0]
+        eg = data[1]
+        sl = data[2]
+        ai_prob = data[3] if len(data) > 3 else None
 
-        # readable seconds
         sl_s = int(sl)
         eg_s = int(eg)
+        
+        # Enhanced reason with AI indicator
+        if ai_prob is not None:
+            reason = f"AI predicts restock ({int(ai_prob*100)}% confidence) — last {sl_s}s ago"
+        else:
+            reason = f"Bought {c}× — last {sl_s}s ago (typical gap ~{eg_s}s)"
 
         out.append({
             "product": ProductSerializer(p, many=False).data,
-            "score": float(c),
-            "reason": f"Bought {c}× — last {sl_s}s ago (typical gap ~{eg_s}s)",
+            "score": float(ai_prob if ai_prob is not None else c),
+            "reason": reason,
             "type": "restock_dynamic",
         })
 
@@ -358,6 +403,7 @@ def getRelatedProducts(request, pk):
         return Response([], status=200)
 
     anchor_id = getattr(anchor, product_pk)
+    anchor_category = (anchor.category or "").lower().strip()
 
     order_ids = (
         OrderItem.objects
@@ -380,11 +426,49 @@ def getRelatedProducts(request, pk):
     products = list(Product.objects.filter(**{filter_key: ranked}).filter(countInStock__gt=0))
     product_map = {getattr(p, product_pk): p for p in products}
 
+    # Category-based filtering with smart logic
+    # Define related category groups (products in same group can be recommended together)
+    category_groups = [
+        {'electronics', 'computers', 'gaming', 'cameras', 'audio'},
+        {'food', 'grocery', 'beverages', 'snacks'},
+        {'health', 'vitamins', 'supplements', 'wellness'},
+        {'beauty', 'cosmetics', 'personal care', 'hair care'},
+        {'home', 'kitchen', 'appliances'},
+        {'clothing', 'fashion', 'accessories'},
+    ]
+    
+    def categories_are_related(cat1, cat2):
+        """Check if two categories should allow cross-recommendations"""
+        if not cat1 or not cat2:
+            return True  # If no category, allow (fallback)
+        
+        c1 = cat1.lower().strip()
+        c2 = cat2.lower().strip()
+        
+        if c1 == c2:
+            return True  # Same category
+        
+        # Check if both categories are in the same group
+        for group in category_groups:
+            c1_in_group = any(keyword in c1 for keyword in group)
+            c2_in_group = any(keyword in c2 for keyword in group)
+            if c1_in_group and c2_in_group:
+                return True
+        
+        return False
+
     out = []
+    
     for pid in ranked:
         p = product_map.get(pid)
         if not p:
             continue
+        
+        # Apply category filtering
+        if anchor_category and p.category:
+            if not categories_are_related(anchor_category, p.category):
+                continue
+        
         out.append({
             "product": ProductSerializer(p, many=False).data,
             "score": float(counts.get(pid, 0)),

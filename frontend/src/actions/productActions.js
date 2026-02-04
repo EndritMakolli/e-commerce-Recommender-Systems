@@ -29,15 +29,15 @@ import {
   PRODUCT_TOP_FAIL,
 } from '../constants/productConstants'
 
-// ✅ LIST PRODUCTS (ALWAYS RETURNS ARRAY)
-// ✅ LIST PRODUCTS (supports keyword + pagination)
-export const listProducts = (keyword = '', pageNumber = 1) => async (dispatch) => {
+// ✅ LIST PRODUCTS (supports keyword, semantic search, + pagination)
+export const listProducts = (keyword = '', pageNumber = 1, semantic = false) => async (dispatch) => {
   try {
     dispatch({ type: PRODUCT_LIST_REQUEST })
 
     const qs = new URLSearchParams()
     if (keyword) qs.set('keyword', keyword)
     qs.set('page', String(pageNumber))
+    if (semantic) qs.set('semantic', '1')
 
     const { data } = await axios.get(`/api/products/?${qs.toString()}`)
 
@@ -236,6 +236,27 @@ export const createProductReview = (productId, review) => async (dispatch, getSt
   } catch (error) {
     dispatch({
       type: PRODUCT_CREATE_REVIEW_FAIL,
+      payload:
+        error.response && error.response.data.detail
+          ? error.response.data.detail
+          : error.message,
+    })
+  }
+}
+
+export const listRelatedProducts = (productId) => async (dispatch) => {
+  try {
+    dispatch({ type: 'PRODUCT_RELATED_REQUEST' })
+
+    const { data } = await axios.get(`/api/recommendations/related/${productId}/`)
+
+    dispatch({
+      type: 'PRODUCT_RELATED_SUCCESS',
+      payload: data,
+    })
+  } catch (error) {
+    dispatch({
+      type: 'PRODUCT_RELATED_FAIL',
       payload:
         error.response && error.response.data.detail
           ? error.response.data.detail

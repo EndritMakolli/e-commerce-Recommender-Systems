@@ -1,6 +1,5 @@
 import React from 'react'
-import { Pagination, Form } from 'react-bootstrap'
-import { LinkContainer } from 'react-router-bootstrap'
+import { Form } from 'react-bootstrap'
 import { useNavigate } from 'react-router-dom'
 
 function Paginate({ pages, page, keyword = '', isAdmin = false }) {
@@ -22,40 +21,69 @@ function Paginate({ pages, page, keyword = '', isAdmin = false }) {
     }
   }
 
-  const onSelectPage = (e) => {
-    const nextPage = Number(e.target.value) || 1
-    const to = buildTo(nextPage)
+  const goToPage = (pageNumber) => {
+    const to = buildTo(pageNumber)
     navigate(`${to.pathname}${to.search}`)
   }
 
+  const onSelectPage = (e) => {
+    const nextPage = Number(e.target.value) || 1
+    goToPage(nextPage)
+  }
+
   return (
-    <div className="d-flex justify-content-center align-items-center gap-3 my-4 flex-wrap">
-      <Pagination className="mb-0">
-        {/* Prev */}
-        <LinkContainer to={buildTo(Math.max(1, currentPage - 1))}>
-          <Pagination.Prev disabled={currentPage === 1} />
-        </LinkContainer>
+    <div style={styles.container}>
+      {/* Arrow button - Previous */}
+      <button
+        onClick={() => goToPage(Math.max(1, currentPage - 1))}
+        disabled={currentPage === 1}
+        style={{
+          ...styles.arrowButton,
+          ...(currentPage === 1 ? styles.arrowDisabled : {}),
+        }}
+      >
+        &lt;
+      </button>
 
-        {/* Page numbers */}
-        {[...Array(totalPages).keys()].map((x) => (
-          <LinkContainer key={x + 1} to={buildTo(x + 1)}>
-            <Pagination.Item active={x + 1 === currentPage}>{x + 1}</Pagination.Item>
-          </LinkContainer>
-        ))}
+      {/* Page numbers */}
+      <div style={styles.pageNumbers}>
+        {[...Array(totalPages).keys()].map((x) => {
+          const pageNum = x + 1
+          const isActive = pageNum === currentPage
+          return (
+            <button
+              key={pageNum}
+              onClick={() => goToPage(pageNum)}
+              style={{
+                ...styles.pageButton,
+                ...(isActive ? styles.pageActive : {}),
+              }}
+            >
+              {pageNum}
+            </button>
+          )
+        })}
+      </div>
 
-        {/* Next */}
-        <LinkContainer to={buildTo(Math.min(totalPages, currentPage + 1))}>
-          <Pagination.Next disabled={currentPage === totalPages} />
-        </LinkContainer>
-      </Pagination>
+      {/* Arrow button - Next */}
+      <button
+        onClick={() => goToPage(Math.min(totalPages, currentPage + 1))}
+        disabled={currentPage === totalPages}
+        style={{
+          ...styles.arrowButton,
+          ...(currentPage === totalPages ? styles.arrowDisabled : {}),
+        }}
+      >
+        &gt;
+      </button>
 
-      {/* Page selector */}
-      <div className="d-flex align-items-center gap-2">
-        <span style={{ opacity: 0.8 }}>Page</span>
+      {/* Page selector dropdown */}
+      <div style={styles.selectorContainer}>
+        <span style={styles.selectorLabel}>Page</span>
         <Form.Select
           value={currentPage}
           onChange={onSelectPage}
-          style={{ width: 120 }}
+          style={styles.selector}
           aria-label="Select page"
         >
           {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
@@ -67,6 +95,77 @@ function Paginate({ pages, page, keyword = '', isAdmin = false }) {
       </div>
     </div>
   )
+}
+
+const styles = {
+  container: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 12,
+    margin: '32px 0',
+    flexWrap: 'wrap',
+  },
+  arrowButton: {
+    background: 'white',
+    border: '1px solid #ccc',
+    borderRadius: 6,
+    width: 36,
+    height: 36,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+    fontSize: 16,
+    fontWeight: 600,
+    color: '#000',
+    transition: 'all 0.2s',
+  },
+  arrowDisabled: {
+    opacity: 0.4,
+    cursor: 'not-allowed',
+  },
+  pageNumbers: {
+    display: 'flex',
+    gap: 6,
+    alignItems: 'center',
+  },
+  pageButton: {
+    background: 'white',
+    border: '1px solid #ccc',
+    borderRadius: 6,
+    minWidth: 36,
+    height: 36,
+    padding: '0 10px',
+    cursor: 'pointer',
+    fontSize: 14,
+    fontWeight: 500,
+    color: '#000',
+    transition: 'all 0.2s',
+  },
+  pageActive: {
+    background: '#000',
+    color: 'white',
+    borderColor: '#000',
+  },
+  selectorContainer: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    marginLeft: 12,
+  },
+  selectorLabel: {
+    opacity: 0.7,
+    fontSize: 14,
+    color: '#000',
+  },
+  selector: {
+    width: 110,
+    fontSize: 14,
+    background: 'white',
+    border: '1px solid #ccc',
+    color: '#000',
+  },
 }
 
 export default Paginate

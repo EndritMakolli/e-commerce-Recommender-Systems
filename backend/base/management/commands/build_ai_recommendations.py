@@ -12,6 +12,7 @@ from sentence_transformers import SentenceTransformer
 
 from django.contrib.auth.models import User
 from base.models import Product, Order, OrderItem, ProductEmbedding, UserProfile, Recommendation
+from base.ml.restock_predictor import get_restock_predictor
 
 MODEL_NAME = "all-MiniLM-L6-v2"
 
@@ -95,6 +96,60 @@ class Command(BaseCommand):
                 epochs=30,
             )
 
+        # 2.5) Train AI Restock Model
+        self.stdout.write("Training AI Restock Predictor...")
+        predictor = get_restock_predictor()
+        
+        # Prepare training data from all users
+        training_data = []
+        all_users = list(User.objects.all())
+        
+        for user in all_users:
+            user_orders_qs = Order.objects.filter(user=user)
+            if paid_only and hasattr(Order, "isPaid"):
+                user_orders_qs = user_orders_qs.filter(isPaid=True)
+            
+            user_orders = user_orders_qs.prefetch_related("orderitem_set")
+            
+            # Group purchases by product
+            product_purchases = defaultdict(list)
+            for o in user_orders:
+                dt = o.createdAt
+                if dt is None:
+                    continue
+                for oi in o.orderitem_set.all():
+                    if oi.product_id:
+                        product_purchases[oi.product_id].append(dt)
+            
+            # Create training samples
+            now = timezone.now()
+            
+            for pid, dts in product_purchases.items():
+                if len(dts) >= 2:
+                    dts_sorted = sorted(dts)
+                    gaps = [(dts_sorted[i] - dts_sorted[i-1]).days 
+                           for i in range(1, len(dts_sorted))]
+                    
+                    if gaps:
+                        mean_gap = float(np.mean(gaps))
+                        days_since = (now - dts_sorted[-1]).days
+                        
+                        # Calculate target probability (ground truth)
+                        target = 1.0 - np.exp(-days_since / (mean_gap + 1e-9))
+                        target = float(np.clip(target, 0.0, 1.0))
+                        
+                        training_data.append((dts, target))
+        
+        if training_data:
+            self.stdout.write(f"Training with {len(training_data)} samples...")
+            success = predictor.train(training_data)
+            if success:
+                self.stdout.write(self.style.SUCCESS("✓ AI Restock model trained!"))
+            else:
+                self.stdout.write(self.style.WARNING("⚠ AI training skipped (not enough data or sklearn unavailable)"))
+        else:
+            self.stdout.write(self.style.WARNING("⚠ Not enough data to train restock model"))
+
         # 3) Per user
         self.stdout.write("Generating recommendations per user...")
         users = list(User.objects.all())
@@ -163,7 +218,7 @@ class Command(BaseCommand):
                         if count >= topn:
                             break
 
-            # RESTOCK
+            # RESTOCK (with AI)
             times = defaultdict(list)
             for pid, dt in purchase_events:
                 if dt is not None:
@@ -173,32 +228,34 @@ class Command(BaseCommand):
                 if len(dts) < 2:
                     continue
 
+                # Use AI prediction
+                prob = predictor.predict(dts)
+                
                 dts_sorted = sorted(dts)
-                gaps = [(dts_sorted[i] - dts_sorted[i - 1]).days for i in range(1, len(dts_sorted))]
-                gaps = [g for g in gaps if g > 0]
-
                 last = dts_sorted[-1]
                 days_since = (now - last).days
-
+                
                 p = product_map.get(pid)
                 if not p or (p.countInStock is not None and p.countInStock <= 0):
                     continue
 
+                # Calculate gaps for reason message
+                gaps = [(dts_sorted[i] - dts_sorted[i-1]).days 
+                       for i in range(1, len(dts_sorted))]
+                gaps = [g for g in gaps if g > 0]
+                
                 if not gaps:
-                    prob = min(0.90, 0.45 + 0.10 * len(dts_sorted))
-                    Recommendation.objects.create(
-                        user=user, product=p, rec_type="restock", score=float(prob),
-                        reason=f"Bought {len(dts_sorted)}× — likely to need again soon",
-                    )
-                    continue
+                    mean_gap_str = "unknown"
+                else:
+                    mean_gap_str = str(int(np.mean(gaps)))
 
-                mean_gap = float(np.mean(gaps))
-                prob = 1.0 - np.exp(-days_since / (mean_gap + 1e-9))
-
-                if prob >= 0.55 or days_since >= 0.6 * mean_gap:
+                if prob >= 0.55 or days_since >= 30:  # AI-based threshold
                     Recommendation.objects.create(
-                        user=user, product=p, rec_type="restock", score=float(prob),
-                        reason=f"Likely time to restock (cycle ~{int(mean_gap)} days)",
+                        user=user,
+                        product=p,
+                        rec_type="restock",
+                        score=float(prob),
+                        reason=f"AI predicts restock ({int(prob*100)}% confidence, cycle ~{mean_gap_str} days)"
                     )
 
             # FREQUENTLY_BOUGHT

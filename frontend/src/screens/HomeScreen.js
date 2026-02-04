@@ -19,6 +19,7 @@ function HomeScreen() {
   const params = new URLSearchParams(location.search)
   const keyword = params.get('keyword') || ''
   const pageNumber = Number(params.get('page') || 1)
+  const semantic = params.get('semantic') === '1'
 
   const productList = useSelector((state) => state.productList) || {}
   const { loading, error, products, pages = 1, page = 1 } = productList
@@ -41,7 +42,7 @@ function HomeScreen() {
   const { success: orderDeliverSuccess } = orderDeliver
 
   useEffect(() => {
-    dispatch(listProducts(keyword, pageNumber))
+    dispatch(listProducts(keyword, pageNumber, semantic))
 
     // Only show/fetch recs on page 1, no search, and when logged in
     if (!keyword && pageNumber === 1 && userInfo) {
@@ -52,6 +53,7 @@ function HomeScreen() {
     dispatch,
     keyword,
     pageNumber,
+    semantic,
     userInfo,
     orderCreateSuccess,
     orderPaySuccess,
@@ -73,6 +75,27 @@ function HomeScreen() {
             <RecommendedSlider items={safeRecs} title="Recommended for you" />
           ) : null}
         </>
+      )}
+
+      {keyword && semantic && (
+        <div style={{
+          background: 'linear-gradient(135deg, rgba(13,110,253,0.1), rgba(140,90,255,0.1))',
+          padding: '12px 16px',
+          borderRadius: 12,
+          marginBottom: 16,
+          border: '1px solid rgba(13,110,253,0.2)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10
+        }}>
+          <span style={{ fontSize: 20 }}>🤖</span>
+          <div>
+            <div style={{ fontWeight: 700, marginBottom: 2 }}>AI-Powered Search Active</div>
+            <div style={{ fontSize: 13, opacity: 0.75 }}>
+              Finding products by meaning, not just keywords. Searching for: "{keyword}"
+            </div>
+          </div>
+        </div>
       )}
 
       <h1>Latest Products</h1>

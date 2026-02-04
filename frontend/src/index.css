@@ -7,3 +7,10 @@ main{
 .rating span{
   margin:0.1rem;
 }
+
+.nav-link{
+  color: #ffffff !important;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}

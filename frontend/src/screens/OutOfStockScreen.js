@@ -167,7 +167,14 @@ function OutOfStockScreen() {
                           <div style={s.metaLine}>
                             {stockBadge(p)}
                             {x?.reason ? (
-                              <span style={{ marginLeft: 8, opacity: 0.75 }}>{x.reason}</span>
+                              <span style={{ marginLeft: 8, opacity: 0.75 }}>
+                                {x.reason.includes('AI predicts') && (
+                                  <Badge bg="primary" style={{ marginRight: 6, fontSize: 10, padding: '3px 8px' }}>
+                                    🤖 AI
+                                  </Badge>
+                                )}
+                                {x.reason}
+                              </span>
                             ) : null}
                           </div>
                         </Col>

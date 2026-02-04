@@ -3,9 +3,10 @@ import { Link, useParams, useNavigate } from 'react-router-dom'
 import { Row, Col, Image, ListGroup, Card, Button, Form } from 'react-bootstrap'
 import Rating from '../components/Rating'
 import { useDispatch, useSelector } from 'react-redux'
-import { listProductDetails, createProductReview } from '../actions/productActions'
+import { listProductDetails, createProductReview, listRelatedProducts } from '../actions/productActions'
 import Loader from '../components/Loader'
 import Message from '../components/Message'
+import Product from '../components/Product'
 import { PRODUCT_CREATE_REVIEW_RESET } from '../constants/productConstants'
 
 function ProductScreen() {
@@ -35,6 +36,10 @@ function ProductScreen() {
     success: successProductReview,
   } = productReviewCreate
 
+  // Related products (Frequently Bought Together)
+  const productRelated = useSelector((state) => state.productRelated)
+  const { loading: loadingRelated, recommendations: relatedProducts } = productRelated
+
   useEffect(() => {
     if (successProductReview) {
       setRating(0)
@@ -43,6 +48,7 @@ function ProductScreen() {
     }
 
     dispatch(listProductDetails(id))
+    dispatch(listRelatedProducts(id))
   }, [dispatch, id, successProductReview])
 
   const addToCartHandler = () => {
@@ -220,6 +226,33 @@ function ProductScreen() {
               </ListGroup>
             </Col>
           </Row>
+
+          {relatedProducts && relatedProducts.length > 0 && (
+            <Row className="mt-5">
+              <Col>
+                <div style={styles.frequentlyBoughtSection}>
+                  <h3 style={styles.sectionTitle}>
+                    🛒 Frequently Bought Together
+                  </h3>
+                  <p style={styles.sectionSubtitle}>
+                    Customers who bought this item also bought
+                  </p>
+
+                  {loadingRelated ? (
+                    <Loader />
+                  ) : (
+                    <Row>
+                      {relatedProducts.slice(0, 4).map((item) => (
+                        <Col key={item.product._id} sm={12} md={6} lg={3}>
+                          <Product product={item.product} />
+                        </Col>
+                      ))}
+                    </Row>
+                  )}
+                </div>
+              </Col>
+            </Row>
+          )}
         </>
       )}
     </div>
@@ -232,7 +265,7 @@ export default ProductScreen
 const styles = {
   imageWrap: {
     width: '100%',
-    maxHeight: 520,          // ✅ height limit (change if you want)
+    maxHeight: 520,
     overflow: 'hidden',
     display: 'flex',
     alignItems: 'center',
@@ -243,8 +276,25 @@ const styles = {
   },
   image: {
     maxWidth: '100%',
-    maxHeight: 520,          // ✅ matches wrapper
-    objectFit: 'contain',    // ✅ keeps full product visible
+    maxHeight: 520,
+    objectFit: 'contain',
+  },
+  frequentlyBoughtSection: {
+    marginTop: 40,
+    marginBottom: 40,
+    padding: '30px 0',
+    borderTop: '1px solid rgba(0,0,0,0.1)',
+  },
+  sectionTitle: {
+    fontSize: 24,
+    fontWeight: 700,
+    marginBottom: 8,
+    color: '#333',
+  },
+  sectionSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 24,
   },
 }
 
