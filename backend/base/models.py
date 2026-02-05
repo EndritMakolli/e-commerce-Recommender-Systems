@@ -31,6 +31,10 @@ class Review(models.Model):
     comment = models.TextField(null=True, blank=True)
     createdAt = models.DateTimeField(auto_now_add=True)
     _id = models.AutoField(primary_key=True, editable=False)
+    
+    # AI Sentiment Analysis fields
+    sentiment = models.CharField(max_length=20, null=True, blank=True)  # positive, negative, neutral
+    sentiment_score = models.FloatField(null=True, blank=True)  # -1 to 1
 
     def __str__(self):
         return str(self.rating)
@@ -82,11 +86,21 @@ class ShippingAddress(models.Model):
 
 class ProductEmbedding(models.Model):
     product = models.OneToOneField('Product', on_delete=models.CASCADE, related_name='embedding')
-    vector = models.JSONField(default=list)  # list[float]
+    vector = models.JSONField(default=list)  # list[float] - text embedding
     updatedAt = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"Embedding({self.product_id})"
+
+
+class ProductImageEmbedding(models.Model):
+    """Store image embeddings for visual search"""
+    product = models.OneToOneField('Product', on_delete=models.CASCADE, related_name='image_embedding')
+    vector = models.JSONField(default=list)  # list[float] - image embedding
+    updatedAt = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"ImageEmbedding({self.product_id})"
 
 
 class UserProfile(models.Model):

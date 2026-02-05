@@ -37,6 +37,10 @@ import {
   relatedRecommendationsReducer,
 } from './reducers/recommendationReducers'
 
+import {
+  visualSearchReducer,
+} from './reducers/aiReducers'
+
 // LocalStorage
 const cartItemsFromStorage = localStorage.getItem('cartItems')
   ? JSON.parse(localStorage.getItem('cartItems'))
@@ -88,6 +92,8 @@ const store = configureStore({
 
     myRecommendations: myRecommendationsReducer,
     relatedRecommendations: relatedRecommendationsReducer,
+
+    visualSearch: visualSearchReducer,
   },
   preloadedState,
   devTools: true,

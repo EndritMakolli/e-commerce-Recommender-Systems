@@ -88,6 +88,7 @@ const s = {
     boxShadow: 'none',
     fontSize: 14,
     height: '100%',
+    minWidth: 200,
   },
   searchBtn: {
     border: 'none',

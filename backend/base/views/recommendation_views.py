@@ -239,9 +239,9 @@ def getRestockDynamic(request):
         if not p or not o:
             continue
 
-        # OPTIONAL: only count paid orders (uncomment if you want)
-        # if not getattr(o, "isPaid", False):
-        #     continue
+        # Only count paid orders for restock recommendations
+        if not getattr(o, "isPaid", False):
+            continue
 
         pid = getattr(p, product_pk, None)
         if pid is None:
@@ -290,6 +290,7 @@ def getRestockDynamic(request):
         if predictor and use_ai:
             try:
                 ai_prob = predictor.predict(dts)
+                print(f"[RESTOCK DEBUG] Product {pid}: AI confidence = {ai_prob:.2f}")
                 
                 # Use AI probability for scoring
                 if ai_prob >= 0.55:  # AI confidence threshold
@@ -307,9 +308,13 @@ def getRestockDynamic(request):
                     
                     due_pids.append(pid)
                     meta[pid] = (counts[pid], expected_gap, since_last, ai_prob)
-                continue
+                    print(f"[RESTOCK DEBUG] Product {pid}: ADDED via AI (confidence {ai_prob:.2f})")
+                    continue  # Skip statistical method if AI succeeded
+                else:
+                    print(f"[RESTOCK DEBUG] Product {pid}: AI confidence too low ({ai_prob:.2f} < 0.55), trying statistical method")
+                    # Don't continue - fall through to statistical method
             except Exception as e:
-                print(f"AI prediction failed for {pid}: {e}")
+                print(f"[RESTOCK DEBUG] AI prediction failed for {pid}: {e}")
                 # Fall through to statistical method
 
         # Fallback to statistical method
@@ -329,18 +334,21 @@ def getRestockDynamic(request):
             if gaps:
                 expected_gap = sum(gaps) / len(gaps)
 
-        # TIME-DUE RULE
+        # TIME-DUE RULE (Statistical fallback)
         if since_last >= due_factor * expected_gap:
             due_pids.append(pid)
             meta[pid] = (counts[pid], expected_gap, since_last, None)
+            print(f"[RESTOCK DEBUG] Product {pid}: ADDED via statistical method (due: {since_last/86400:.1f}d >= {due_factor*expected_gap/86400:.1f}d)")
 
     # fetch products
+    print(f"[RESTOCK DEBUG] Total due products: {len(due_pids)}, IDs: {due_pids}")
     qs = Product.objects.filter(**{f"{product_pk}__in": due_pids})
     if not include_oos:
         qs = qs.filter(countInStock__gt=0)
 
     products = list(qs)
     pmap = {getattr(p, product_pk): p for p in products}
+    print(f"[RESTOCK DEBUG] Products after filter (in stock): {len(products)}")
 
     # Updated ranking with AI scores
     def rank_key(pid):

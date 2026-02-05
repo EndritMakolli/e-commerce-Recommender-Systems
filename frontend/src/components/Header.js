@@ -62,6 +62,10 @@ function Header() {
                     <LinkContainer to="/outofstock">
                       <Nav.Link style={s.navLink}>Out of Stock</Nav.Link>
                     </LinkContainer>
+
+                    <LinkContainer to="/visual-search">
+                      <Nav.Link style={s.navLink}>🖼️ Visual Search</Nav.Link>
+                    </LinkContainer>
                   </>
                 ) : (
                   <>
@@ -123,7 +127,7 @@ function Header() {
                   )}
                 </div>
 
-                <div style={s.rightSpacerSmall} />
+                {/* <div style={s.rightSpacerSmall} /> */}
 
                 {/* Cart (WHITE) */}
                 <div style={s.slot}>
