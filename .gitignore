@@ -25,3 +25,10 @@ media/
 # ML models
 ml_models/
 *.pkl
+
+
+__pycache__/
+*.pyc
+db.sqlite3
+node_modules/
+.env

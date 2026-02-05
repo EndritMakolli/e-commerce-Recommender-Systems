@@ -1,0 +1,27 @@
+# AI Chatbot Dependencies
+# These are in addition to the existing Django project requirements
+
+# Core Dependencies
+Django>=5.0
+djangorestframework>=3.14
+django-cors-headers>=4.0
+
+# AI/ML Providers (install based on choice)
+openai>=0.27.0  # For OpenAI GPT models
+python-dotenv>=1.0.0  # For environment variables
+
+# Optional: For Hugging Face
+# transformers>=4.30.0
+# torch>=2.0.0
+
+# Optional: For better NLP capabilities
+# numpy>=1.24.0
+# scikit-learn>=1.2.0
+
+# Optional: For async tasks
+# celery>=5.2.0
+# redis>=4.5.0
+
+# Optional: For improved serialization
+# django-filter>=23.1
+# drf-spectacular>=0.26.0  # For API documentation

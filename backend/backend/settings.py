@@ -13,6 +13,10 @@ https://docs.djangoproject.com/en/5.0.6/ref/settings/
 import os
 from datetime import timedelta
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -44,6 +48,7 @@ INSTALLED_APPS = [
     'storages',
 
     'base.apps.BaseConfig',
+    'api.chatbot.apps.ChatbotConfig',
 ]
 
 
@@ -181,7 +186,6 @@ MEDIA_URL = '/images/'
 
 STATICFILES_DIRS = [
     BASE_DIR / 'static',
-    BASE_DIR / 'frontend/build/static'
 ]
 
 

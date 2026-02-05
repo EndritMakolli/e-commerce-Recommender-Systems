@@ -27,7 +27,11 @@ urlpatterns = [
     path('api/users/', include('base.urls.user_urls')),
     path('api/orders/', include('base.urls.order_urls')),
     path('api/recommendations/', include('base.urls.recommendation_urls')),
+<<<<<<< Updated upstream
     path('api/ai/', include('base.urls.ai_urls')),
+=======
+    path('api/chatbot/', include('api.chatbot.urls')),
+>>>>>>> Stashed changes
 
 ]
 
