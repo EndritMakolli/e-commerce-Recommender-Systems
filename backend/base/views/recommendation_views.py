@@ -372,14 +372,27 @@ def getRestockDynamic(request):
         sl = data[2]
         ai_prob = data[3] if len(data) > 3 else None
 
-        sl_s = int(sl)
-        eg_s = int(eg)
+        # Convert seconds to human-readable format
+        def format_time(seconds):
+            seconds = int(seconds)
+            if seconds < 3600:  # Less than 1 hour
+                minutes = seconds // 60
+                return f"{minutes} min" if minutes > 0 else f"{seconds} sec"
+            elif seconds < 86400:  # Less than 1 day
+                hours = seconds // 3600
+                return f"{hours} hour{'s' if hours != 1 else ''}"
+            else:  # Days
+                days = seconds // 86400
+                return f"{days} day{'s' if days != 1 else ''}"
+        
+        time_ago = format_time(sl)
+        typical_gap = format_time(eg)
         
         # Enhanced reason with AI indicator
         if ai_prob is not None:
-            reason = f"AI predicts restock ({int(ai_prob*100)}% confidence) — last {sl_s}s ago"
+            reason = f"AI predicts restock ({int(ai_prob*100)}% confidence) — last bought {time_ago} ago"
         else:
-            reason = f"Bought {c}× — last {sl_s}s ago (typical gap ~{eg_s}s)"
+            reason = f"Bought {c}× — last {time_ago} ago (typical gap ~{typical_gap})"
 
         out.append({
             "product": ProductSerializer(p, many=False).data,
