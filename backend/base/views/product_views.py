@@ -5,7 +5,7 @@ from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 
-from base.models import Product, Review, ProductEmbedding
+from base.models import Product, Review, ProductEmbedding, ProductEvent
 from base.serializers import ProductSerializer
 
 from rest_framework import status
@@ -212,3 +212,62 @@ def createProductReview(request, pk):
         product.save()
 
         return Response('Review Added')
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def trackProductEvent(request, pk):
+    """
+    Track user product events (view, add_to_cart, purchase)
+    Body: { "event_type": "view" | "add_to_cart" | "purchase" }
+    """
+    try:
+        user = request.user
+        
+        try:
+            product = Product.objects.get(_id=pk)
+        except Product.DoesNotExist:
+            return Response(
+                {'error': 'Product not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        event_type = request.data.get('event_type', 'view')
+        
+        if event_type not in ['view', 'add_to_cart', 'purchase']:
+            return Response(
+                {'error': 'Invalid event_type. Must be: view, add_to_cart, or purchase'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Create or update event (avoid duplicates for views within same session)
+        # For views, we'll create a new event each time (allows tracking frequency)
+        # For cart/purchase, we can check if already exists
+        if event_type == 'view':
+            # Always create view events to track frequency
+            ProductEvent.objects.create(
+                user=user,
+                product=product,
+                event_type=event_type,
+                weight=1.0
+            )
+        else:
+            # For cart/purchase, create if doesn't exist
+            ProductEvent.objects.get_or_create(
+                user=user,
+                product=product,
+                event_type=event_type,
+                defaults={'weight': 1.0}
+            )
+
+        return Response({
+            'message': f'Event tracked: {event_type}',
+            'product_id': product._id,
+            'event_type': event_type
+        }, status=status.HTTP_201_CREATED)
+
+    except Exception as e:
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

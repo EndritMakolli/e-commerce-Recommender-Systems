@@ -28,6 +28,7 @@ urlpatterns = [
     path('api/orders/', include('base.urls.order_urls')),
     path('api/recommendations/', include('base.urls.recommendation_urls')),
     path('api/ai/', include('base.urls.ai_urls')),
+    path('api/price-alerts/', include('base.urls.price_alert_urls')),
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

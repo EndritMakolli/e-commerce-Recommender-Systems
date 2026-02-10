@@ -25,6 +25,7 @@ import OrderListScreen from './screens/OrderListScreen'
 import OrdersScreen from './screens/OrdersScreen'
 import OutOfStockScreen from './screens/OutOfStockScreen'
 import VisualSearchScreen from './screens/VisualSearchScreen'
+import PriceAlertsScreen from './screens/PriceAlertsScreen'
 
 function App() {
   const [showChat, setShowChat] = useState(false)
@@ -66,6 +67,7 @@ function App() {
 
             <Route path="/order/:id" element={<OrderScreen />} />
             <Route path="/orders" element={<OrdersScreen />} />
+            <Route path="/price-alerts" element={<PriceAlertsScreen />} />
             <Route path="/admin/userlist" element={<UserListScreen />} />
             <Route path="/admin/user/:id/edit" element={<UserEditScreen />} />
             <Route path="/admin/productlist" element={<ProductListScreen />} />

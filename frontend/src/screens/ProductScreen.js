@@ -7,6 +7,9 @@ import { listProductDetails, createProductReview, listRelatedProducts } from '..
 import Loader from '../components/Loader'
 import Message from '../components/Message'
 import Product from '../components/Product'
+import PriceAlertButton from '../components/PriceAlertButton'
+import SmartPricingBadge from '../components/SmartPricingBadge'
+import { trackProductEvent } from '../utils/trackProductEvent'
 import { PRODUCT_CREATE_REVIEW_RESET } from '../constants/productConstants'
 
 function ProductScreen() {
@@ -50,6 +53,13 @@ function ProductScreen() {
     dispatch(listProductDetails(id))
     dispatch(listRelatedProducts(id))
   }, [dispatch, id, successProductReview])
+
+  // Track product view event
+  useEffect(() => {
+    if (product && userInfo && userInfo.token) {
+      trackProductEvent(product._id, 'view', userInfo.token)
+    }
+  }, [product, userInfo])
 
   const addToCartHandler = () => {
     navigate(`/cart/${id}?qty=${qty}`)
@@ -110,6 +120,14 @@ function ProductScreen() {
                         <strong>${product?.price}</strong>
                       </Col>
                     </Row>
+                    {/* AI Smart Pricing Badge - key forces fresh fetch per product */}
+                    <div style={{ marginTop: '12px' }}>
+                      <SmartPricingBadge
+                        key={product?._id}
+                        productId={product?._id}
+                        currentPrice={product?.price}
+                      />
+                    </div>
                   </ListGroup.Item>
 
                   <ListGroup.Item>
@@ -149,6 +167,10 @@ function ProductScreen() {
                     >
                       Add To Cart
                     </Button>
+                  </ListGroup.Item>
+
+                  <ListGroup.Item>
+                    <PriceAlertButton product={product} />
                   </ListGroup.Item>
                 </ListGroup>
               </Card>

@@ -29,6 +29,7 @@ import {
 } from '../constants/orderConstants'
 
 import { CART_CLEAR_ITEMS } from '../constants/cartConstants'
+import { trackProductEvent } from '../utils/trackProductEvent'
 
 
 export const createOrder = (order) => async (dispatch, getState) => {
@@ -65,6 +66,13 @@ export const createOrder = (order) => async (dispatch, getState) => {
         })
 
         localStorage.removeItem('cartItems')
+
+        // Track purchase events for all products in the order
+        if (data?.orderItems && userInfo?.token) {
+            data.orderItems.forEach((item) => {
+                trackProductEvent(item.product, 'purchase', userInfo.token)
+            })
+        }
 
 
     } catch (error) {

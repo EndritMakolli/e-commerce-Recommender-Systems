@@ -223,7 +223,7 @@ function OutOfStockScreen() {
 
                 <div style={s.sideTitle}>Tip</div>
                 <div style={s.sideText}>
-                  If you don’t see anything yet, buy the same item at least twice (test orders are fine).
+                  If you don’t see anything yet, buy the same item at least twice.
                 </div>
               </Card.Body>
             </Card>

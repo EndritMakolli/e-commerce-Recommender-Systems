@@ -41,6 +41,14 @@ import {
   visualSearchReducer,
 } from './reducers/aiReducers'
 
+import {
+  priceAlertCreateReducer,
+  priceAlertListReducer,
+  priceAlertDeleteReducer,
+  priceHistoryReducer,
+  smartPricingReducer,
+} from './reducers/priceAlertReducers'
+
 // LocalStorage
 const cartItemsFromStorage = localStorage.getItem('cartItems')
   ? JSON.parse(localStorage.getItem('cartItems'))
@@ -94,6 +102,12 @@ const store = configureStore({
     relatedRecommendations: relatedRecommendationsReducer,
 
     visualSearch: visualSearchReducer,
+
+    priceAlertCreate: priceAlertCreateReducer,
+    priceAlertList: priceAlertListReducer,
+    priceAlertDelete: priceAlertDeleteReducer,
+    priceHistory: priceHistoryReducer,
+    smartPricing: smartPricingReducer,
   },
   preloadedState,
   devTools: true,

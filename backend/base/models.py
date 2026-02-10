@@ -143,3 +143,41 @@ class Recommendation(models.Model):
 
     def __str__(self):
         return f"{self.user_id}:{self.rec_type}:{self.product_id}"
+
+
+class PriceHistory(models.Model):
+    """Track product price changes over time for AI analysis"""
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='price_history')
+    price = models.DecimalField(max_digits=7, decimal_places=2)
+    discount_percentage = models.DecimalField(max_digits=5, decimal_places=2, default=0.0)
+    original_price = models.DecimalField(max_digits=7, decimal_places=2, null=True, blank=True)
+    reason = models.CharField(max_length=255, blank=True, default='')  # e.g., "seasonal sale", "clearance"
+    createdAt = models.DateTimeField(auto_now_add=True)
+    _id = models.AutoField(primary_key=True, editable=False)
+
+    class Meta:
+        ordering = ['-createdAt']
+        verbose_name_plural = 'Price Histories'
+
+    def __str__(self):
+        return f"{self.product.name} - ${self.price} ({self.createdAt.strftime('%Y-%m-%d')})"
+
+
+class PriceAlert(models.Model):
+    """User's price drop alerts/watchlist"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='price_alerts')
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='alerts')
+    target_price = models.DecimalField(max_digits=7, decimal_places=2, null=True, blank=True)
+    notify_any_drop = models.BooleanField(default=False)  # Notify on ANY price decrease
+    is_active = models.BooleanField(default=True)
+    notified = models.BooleanField(default=False)
+    notified_at = models.DateTimeField(null=True, blank=True)
+    createdAt = models.DateTimeField(auto_now_add=True)
+    _id = models.AutoField(primary_key=True, editable=False)
+
+    class Meta:
+        unique_together = ('user', 'product')
+        ordering = ['-createdAt']
+
+    def __str__(self):
+        return f"{self.user.username} watching {self.product.name}"

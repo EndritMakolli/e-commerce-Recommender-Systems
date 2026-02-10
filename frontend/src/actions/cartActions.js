@@ -6,6 +6,7 @@ import {
 
     CART_SAVE_PAYMENT_METHOD,
 } from '../constants/cartConstants'
+import { trackProductEvent } from '../utils/trackProductEvent'
 
 
 export const addToCart = (id, qty) => async (dispatch, getState) => {
@@ -23,6 +24,12 @@ export const addToCart = (id, qty) => async (dispatch, getState) => {
         }
     })
     localStorage.setItem('cartItems', JSON.stringify(getState().cart.cartItems))
+
+    // Track add_to_cart event for AI
+    const { userLogin } = getState()
+    if (userLogin?.userInfo?.token) {
+        trackProductEvent(id, 'add_to_cart', userLogin.userInfo.token)
+    }
 }
 
 

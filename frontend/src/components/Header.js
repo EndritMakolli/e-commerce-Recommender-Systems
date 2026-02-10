@@ -55,16 +55,16 @@ function Header() {
                       <Nav.Link style={s.navLink}>Home</Nav.Link>
                     </LinkContainer>
 
-                    <LinkContainer to="/">
+                    {/* <LinkContainer to="/">
                       <Nav.Link style={s.navLink}>Shop</Nav.Link>
-                    </LinkContainer>
+                    </LinkContainer> */}
 
                     <LinkContainer to="/outofstock">
                       <Nav.Link style={s.navLink}>Out of Stock</Nav.Link>
                     </LinkContainer>
 
                     <LinkContainer to="/visual-search">
-                      <Nav.Link style={s.navLink}>🖼️ Visual Search</Nav.Link>
+                      <Nav.Link style={s.navLink}>Visual Search</Nav.Link>
                     </LinkContainer>
                   </>
                 ) : (
@@ -111,6 +111,12 @@ function Header() {
 
                       <LinkContainer to="/orders">
                         <NavDropdown.Item>My Orders</NavDropdown.Item>
+                      </LinkContainer>
+
+                      <LinkContainer to="/price-alerts">
+                        <NavDropdown.Item>
+                          Price Alerts
+                        </NavDropdown.Item>
                       </LinkContainer>
 
                       <NavDropdown.Divider />
