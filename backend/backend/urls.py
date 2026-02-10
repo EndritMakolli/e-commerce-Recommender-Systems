@@ -29,6 +29,7 @@ urlpatterns = [
     path('api/recommendations/', include('base.urls.recommendation_urls')),
     path('api/ai/', include('base.urls.ai_urls')),
     path('api/price-alerts/', include('base.urls.price_alert_urls')),
+    path('api/chatbot/', include('api.chatbot.urls')),
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

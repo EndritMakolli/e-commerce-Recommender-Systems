@@ -135,15 +135,37 @@ const ChatBot = ({ userInfo, clearTrigger }) => {
     }
   };
 
-  // Send message and get response
-  const sendMessage = async (e, questionText = null) => {
+  // Send message and get response (sessionToUse = currentSession, or new session when auto-creating)
+  const sendMessage = async (e, questionText = null, sessionToUse = null) => {
     if (e && e.preventDefault) e.preventDefault();
 
     const messageText = questionText || inputValue.trim();
     if (!messageText) return;
-    if (!currentSession) {
-      alert('Please create a chat session first');
-      return;
+
+    let session = sessionToUse || currentSession;
+
+    // If no session yet, create one first then send with the new session
+    if (!session) {
+      setIsLoading(true);
+      try {
+        const title = `Chat ${new Date().toLocaleDateString()}`;
+        const response = await axios.post(
+          `${API_BASE}/sessions/`,
+          { title },
+          getAxiosConfig()
+        );
+        const newSession = response.data;
+        setSessions((prev) => [newSession, ...prev]);
+        setCurrentSession(newSession);
+        setMessages([]);
+        session = newSession;
+      } catch (err) {
+        console.error('Error creating session:', err);
+        alert('Could not start chat. Make sure you are logged in and the chatbot API is running.');
+        return;
+      } finally {
+        setIsLoading(false);
+      }
     }
 
     setIsLoading(true);
@@ -164,7 +186,7 @@ const ChatBot = ({ userInfo, clearTrigger }) => {
 
       // Send to backend
       const response = await axios.post(
-        `${API_BASE}/sessions/${currentSession.id}/send_message/`,
+        `${API_BASE}/sessions/${session.id}/send_message/`,
         { content: messageText },
         getAxiosConfig()
       );
